@@ -255,6 +255,14 @@
                   </div>
                 </div>
 
+                <div class="flex justify-between items-center mb-6 mt-4 border-t pt-4">
+                  <h3 class="text-[10px] font-black text-gray-400 uppercase tracking-widest flex-grow">ライブ概要</h3>
+                  <button @click="shareOnLine(activeLive, 'live_detail')"
+                    class="ml-4 bg-[#06C755] text-white px-3 py-1 rounded-full text-[9px] font-black shadow active:scale-95 transition flex items-center">
+                    <i class="fab fa-line text-lg mr-1.5"></i>このライブを共有
+                  </button>
+                </div>
+
                 <div class="mb-4">
                   <label class="text-xs font-bold text-gray-500 block mb-1">ライブタイトル</label>
                   <input type="text" v-model="activeLive.ライブタイトル"
@@ -1028,6 +1036,17 @@
   </div>
 
   <script>
+    // --- LINE内ブラウザ回避（最初から外部ブラウザで開く） ---
+    (function() {
+      const ua = navigator.userAgent || navigator.vendor || window.opera;
+      const isLine = /Line/i.test(ua);
+      const hasParam = window.location.search.indexOf('openExternalBrowser=1') !== -1;
+      if (isLine && !hasParam) {
+        const sep = window.location.search ? '&' : '?';
+        window.location.href = window.location.href + sep + 'openExternalBrowser=1';
+      }
+    })();
+
     const { createApp, ref, computed, onMounted, nextTick } = Vue;
 
     createApp({
@@ -1532,14 +1551,26 @@
         const shareOnLine = (item, type) => {
           let url = '';
           let text = '';
-          if (type === 'live_video') {
-            url = item.動画URL;
+          // 現在のベースURL取得（パラメータ除去）
+          const currentUrl = window.location.href.split('?')[0].split('#')[0];
+          // 末尾に外部ブラウザ起動フラグを付与
+          const forceExternal = (u) => {
+            if (!u) return '';
+            const sep = u.indexOf('?') !== -1 ? '&' : '?';
+            return u + sep + "openExternalBrowser=1";
+          };
+
+          if (type === 'live_detail') {
+            url = forceExternal(currentUrl);
+            text = (item.日にち || '') + ' ' + (item.ライブタイトル || 'Live') + ' 詳細\n' + url;
+          } else if (type === 'live_video') {
+            url = forceExternal(item.動画URL);
             text = (item.ライブタイトル || 'Live') + ' 動画\n' + url;
           } else if (type === 'live_photo') {
-            url = item.写真URL;
+            url = forceExternal(item.写真URL);
             text = (item.ライブタイトル || 'Live') + ' 写真\n' + url;
           } else if (type === 'studio_video') {
-            url = item.動画URL;
+            url = forceExternal(item.動画URL);
             text = formatDate(item.日にち) + ' スタジオ動画\n' + url;
           }
           if (!url) { alert('URLが入力されていません'); return; }
