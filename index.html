@@ -171,6 +171,18 @@
                       {{ getMemberName(mid, true) }}
                     </span>
                   </div>
+                  <!-- セトリへのショートカット -->
+                  <div class="mt-4 pt-3 border-t border-gray-100 flex justify-between items-center" v-if="db.setlists.some(s => s.ライブID === live.ID)">
+                    <div class="flex items-center text-[10px] font-black text-gray-400">
+                      <i class="fas fa-list-ol mr-2 text-teal-500"></i>
+                      SETLIST ({{ db.setlists.filter(s => s.ライブID === live.ID).length }}曲)
+                    </div>
+                    <button @click.stop="goToSetlist(live)"
+                      class="text-[10px] font-black bg-teal-500 text-white px-3 py-1.5 rounded-lg shadow-sm active:scale-95 transition flex items-center">
+                      セトリを確認・編集
+                      <i class="fas fa-chevron-right ml-1"></i>
+                    </button>
+                  </div>
                 </div>
               </div>
               <div v-if="sortedLivesDesc.length === 0" class="text-center py-10 text-gray-400">予定がありません</div>
@@ -1314,6 +1326,10 @@
             .map(s => s.曲ID);
           nextTick(initSortable);
         };
+        const goToSetlist = (live) => {
+          goToLiveDetail(live);
+          liveDetailTab.value = 'setlist';
+        };
         const openLiveModal = () => {
           goToLiveDetail({ ID: '', 日にち: new Date().toISOString().slice(0, 10), ライブ場所: '', ライブタイトル: '新規ライブ', '制限時間(分)': 30, ステータス: '参加', 動画URL: '', 写真URL: '', 備考: '', 参加メンバー: [] });
         };
@@ -1599,7 +1615,7 @@
           getLivesInMonth, hasLiveMonth, getStudiosInMonth, hasStudioMonth, sortedMonths, uniqueVenues,
           studioYear, studioMonth, changeStudioMonth, getStudiosInExactMonth, uniqueStudioVenues,
           showStudioModal, editStudio, openStudioModal, saveStudio, toggleStudioMember,
-          activeLive, liveDetailTab, goToLiveDetail, openLiveModal, saveActiveLive, toggleLiveMember,
+          activeLive, liveDetailTab, goToLiveDetail, goToSetlist, openLiveModal, saveActiveLive, toggleLiveMember,
           activeSetlist, showSongSelector, getSongName, getSongTime, formatTimeStr, songNumberOf,
           currentSetlistTotalTime, currentSetlistTotalTimeNum, addMCToSetlist, addToSetlist, removeFromSetlist, saveSetlist,
           newGuest, currentLiveGuests, addGuest,
