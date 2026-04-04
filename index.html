@@ -569,8 +569,11 @@
 
         // --- API 呼び出し ---
         const callApi = async (action, data = null) => {
-          if (!gasApiUrl.value) {
+          const url = gasApiUrl.value ? gasApiUrl.value.trim() : '';
+          
+          if (!url) {
             // モックデータ（URL未設定時のプレビュー）
+            console.log('Using mock data because URL is empty');
             if (action === 'getAllData') return {
               songs: [{ ID: 's1', 曲名: 'Sample Rock', '時間(分)': 4, '時間(秒)': 30, BPM: 120, 演奏回数: 5, リンクURL: 'https://youtube.com', 備考: '元気よく' }],
               lives: [{ ID: 'l1', 日にち: '2026-10-10', ライブ場所: '渋谷Star Lounge', ライブタイトル: 'Autumn Festival 2026', '制限時間(分)': 30, ステータス: '参加', 備考: '持ち時間30分' }],
@@ -583,17 +586,18 @@
           }
 
           try {
-            const response = await fetch(gasApiUrl.value, {
+            const response = await fetch(url, {
               method: 'POST',
               body: JSON.stringify({ action, data }),
-              headers: { 'Content-Type': 'text/plain;charset=utf-8' }
+              headers: { 'Content-Type': 'text/plain' }
             });
             const result = await response.json();
             if (result.status === 'error') throw new Error(result.message);
             return result.data;
           } catch (err) {
-            console.error(err);
-            throw err;
+            console.error('API Error details:', err);
+            const msg = `API接続エラー:\nアクション: ${action}\nURL: ${url}\n内容: ${err.message}\n\n※GASが「全員」にデプロイされているか、URLに間違いがないか確認してください。`;
+            throw new Error(msg);
           }
         };
 
