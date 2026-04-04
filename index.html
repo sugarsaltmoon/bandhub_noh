@@ -164,6 +164,13 @@
                       <i class="fas fa-camera mr-1"></i>写真
                     </a>
                   </div>
+                  <!-- 参加メンバー表示 -->
+                  <div class="mt-3 flex flex-wrap gap-1" v-if="live.参加メンバー && live.参加メンバー.length > 0">
+                    <span v-for="mid in live.参加メンバー" :key="mid"
+                      class="text-[9px] font-bold bg-gray-100 text-gray-600 px-1.5 py-0.5 rounded border border-gray-200">
+                      {{ getMemberName(mid, true) }}
+                    </span>
+                  </div>
                 </div>
               </div>
               <div v-if="sortedLivesDesc.length === 0" class="text-center py-10 text-gray-400">予定がありません</div>
@@ -300,6 +307,26 @@
                         class="bg-[#06C755] text-white px-3 py-2 rounded-lg shadow-sm active:scale-95 transition flex items-center justify-center">
                         <i class="fab fa-line text-xl"></i>
                       </button>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- 参加メンバー管理 -->
+                <div class="mb-6">
+                  <label class="text-xs font-bold text-gray-500 block mb-2 border-b pb-1">参加メンバー</label>
+                  <div class="grid grid-cols-2 gap-2 max-h-40 overflow-y-auto p-1">
+                    <div v-for="m in db.members" :key="m.ID"
+                      class="flex items-center justify-between bg-white border border-gray-200 p-2 rounded-lg text-sm shadow-sm transition active:scale-95"
+                      @click="toggleLiveMember(m.ID)">
+                      <div class="flex flex-col">
+                        <span class="text-gray-800 font-bold text-xs">{{ m.名前 }}</span>
+                        <span class="text-[9px] text-gray-400">{{ m.パート }}</span>
+                      </div>
+                      <div class="w-8 h-4 rounded-full transition-colors relative"
+                        :class="activeLive.参加メンバー && activeLive.参加メンバー.includes(m.ID) ? 'bg-teal-500' : 'bg-gray-200'">
+                        <div class="w-4 h-4 bg-white rounded-full absolute top-0 shadow transition-transform"
+                          :class="activeLive.参加メンバー && activeLive.参加メンバー.includes(m.ID) ? 'translate-x-4' : 'translate-x-0'"></div>
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -1259,6 +1286,7 @@
         const liveDetailTab = ref('overview');
         const goToLiveDetail = (live) => {
           activeLive.value = { ...live };
+          if (!activeLive.value.参加メンバー) activeLive.value.参加メンバー = [];
           liveDetailTab.value = 'overview';
           currentPage.value = 'live_detail';
           activeSetlist.value = db.value.setlists
@@ -1268,7 +1296,14 @@
           nextTick(initSortable);
         };
         const openLiveModal = () => {
-          goToLiveDetail({ ID: '', 日にち: new Date().toISOString().slice(0, 10), ライブ場所: '', ライブタイトル: '新規ライブ', '制限時間(分)': 30, ステータス: '参加', 動画URL: '', 写真URL: '', 備考: '' });
+          goToLiveDetail({ ID: '', 日にち: new Date().toISOString().slice(0, 10), ライブ場所: '', ライブタイトル: '新規ライブ', '制限時間(分)': 30, ステータス: '参加', 動画URL: '', 写真URL: '', 備考: '', 参加メンバー: [] });
+        };
+        const toggleLiveMember = (memberId) => {
+          if (!activeLive.value.参加メンバー) activeLive.value.参加メンバー = [];
+          const idx = activeLive.value.参加メンバー.indexOf(memberId);
+          if (idx >= 0) activeLive.value.参加メンバー.splice(idx, 1);
+          else activeLive.value.参加メンバー.push(memberId);
+          activeLive.value.参加メンバー = [...activeLive.value.参加メンバー];
         };
         const saveActiveLive = async () => {
           saving.value = true;
@@ -1277,6 +1312,9 @@
             activeLive.value = res;
             const idx = db.value.lives.findIndex(l => l.ID === res.ID);
             if (idx >= 0) db.value.lives.splice(idx, 1, res); else db.value.lives.push(res);
+            // 保存成功後、一覧画面に移動
+            alert('ライブ情報を保存しました');
+            currentPage.value = 'lives';
           } catch (err) { alert(err.message); }
           finally { saving.value = false; }
         };
@@ -1530,7 +1568,7 @@
           getLivesInMonth, hasLiveMonth, getStudiosInMonth, hasStudioMonth, sortedMonths, uniqueVenues,
           studioYear, studioMonth, changeStudioMonth, getStudiosInExactMonth, uniqueStudioVenues,
           showStudioModal, editStudio, openStudioModal, saveStudio, toggleStudioMember,
-          activeLive, liveDetailTab, goToLiveDetail, openLiveModal, saveActiveLive,
+          activeLive, liveDetailTab, goToLiveDetail, openLiveModal, saveActiveLive, toggleLiveMember,
           activeSetlist, showSongSelector, getSongName, getSongTime, formatTimeStr, songNumberOf,
           currentSetlistTotalTime, currentSetlistTotalTimeNum, addMCToSetlist, addToSetlist, removeFromSetlist, saveSetlist,
           newGuest, currentLiveGuests, addGuest,
