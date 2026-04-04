@@ -171,16 +171,18 @@
                       {{ getMemberName(mid, true) }}
                     </span>
                   </div>
-                  <!-- セトリへのショートカット -->
-                  <div class="mt-4 pt-3 border-t border-gray-100 flex justify-between items-center" v-if="db.setlists.some(s => s.ライブID === live.ID)">
+                  <!-- セトリへのショートカット (常に表示に改善) -->
+                  <div class="mt-4 pt-3 border-t border-gray-100 flex justify-between items-center">
                     <div class="flex items-center text-[10px] font-black text-gray-400">
-                      <i class="fas fa-list-ol mr-2 text-teal-500"></i>
-                      SETLIST ({{ db.setlists.filter(s => s.ライブID === live.ID).length }}曲)
+                      <i class="fas fa-list-ol mr-2" :class="db.setlists.some(s => s.ライブID === live.ID) ? 'text-teal-500' : 'text-gray-300'"></i>
+                      SETLIST <span class="ml-1" v-if="db.setlists.some(s => s.ライブID === live.ID)">({{ db.setlists.filter(s => s.ライブID === live.ID).length }}曲)</span>
+                      <span class="ml-1" v-else>未設定</span>
                     </div>
-                    <button @click.stop="goToSetlist(live)"
-                      class="text-[10px] font-black bg-teal-500 text-white px-3 py-1.5 rounded-lg shadow-sm active:scale-95 transition flex items-center">
-                      セトリを確認・編集
-                      <i class="fas fa-chevron-right ml-1"></i>
+                    <button @click.stop="openSetlistModal(live)"
+                      class="text-[10px] font-black px-3 py-1.5 rounded-lg shadow-sm active:scale-95 transition flex items-center"
+                      :class="db.setlists.some(s => s.ライブID === live.ID) ? 'bg-teal-500 text-white' : 'bg-gray-100 text-gray-500'">
+                      {{ db.setlists.some(s => s.ライブID === live.ID) ? 'セトリを編集' : '＋ セトリ作成' }}
+                      <i class="fas fa-magic ml-1" v-if="!db.setlists.some(s => s.ライブID === live.ID)"></i>
                     </button>
                   </div>
                 </div>
@@ -1012,15 +1014,72 @@
             </div>
           </div>
         </div>
-        <div class="absolute bottom-0 left-0 right-0 bg-white p-3 border-t shadow-[0_-5px_15px_rgba(0,0,0,0.1)] z-20 flex">
-          <button v-if="plotActiveId !== 'MASTER'" @click="resetToMaster"
-            class="flex-1 bg-gray-200 text-gray-700 font-bold py-3 rounded-l-xl border-r border-gray-300">
-            <i class="fas fa-undo mr-1"></i>マスターにリセット
-          </button>
-          <button @click="savePlot" :disabled="saving" class="flex-1 bg-gray-900 text-white font-bold py-3 ml-2 rounded-xl shadow">
-            {{ saving ? '保存中...' : '設計図を保存' }}
-          </button>
+      <!-- クイックセットリスト編集モーダル -->
+      <transition enter-active-class="transition ease-out duration-300" enter-from-class="opacity-0 translate-y-4" enter-to-class="opacity-100 translate-y-0" leave-active-class="transition ease-in duration-200" leave-from-class="opacity-100 translate-y-0" leave-to-class="opacity-0 translate-y-4">
+        <div v-if="showSetlistModal" class="fixed inset-0 z-[100] flex items-center justify-center p-4">
+          <div class="absolute inset-0 bg-gray-900/80 backdrop-blur-sm" @click="showSetlistModal = false"></div>
+          <div class="bg-white w-full max-w-lg rounded-2xl shadow-2xl flex flex-col max-h-[90vh] z-10 overflow-hidden">
+            <!-- Modal Header -->
+            <div class="p-4 border-b flex justify-between items-center bg-gray-50">
+              <div>
+                <h3 class="font-black text-gray-800 text-sm leading-tight">{{ activeLive.ライブタイトル || 'セトリ編集' }}</h3>
+                <p class="text-[10px] text-gray-400 mt-0.5"><i class="fas fa-calendar-alt mr-1"></i>{{ formatDate(activeLive.日にち) }}</p>
+              </div>
+              <button @click="showSetlistModal = false" class="text-gray-400 hover:text-gray-600 p-2"><i class="fas fa-times text-xl"></i></button>
+            </div>
+            
+            <!-- Modal Body (Setlist) -->
+            <div class="flex-grow overflow-y-auto p-4 bg-gray-50">
+              <div id="modal-setlist-container" class="space-y-2">
+                <div v-for="(songId, idx) in activeSetlist" :key="idx"
+                  class="bg-white p-3 rounded-xl shadow-sm border border-gray-200 flex items-center group transition active:bg-blue-50">
+                  <div class="mr-3 text-gray-300 cursor-grab active:cursor-grabbing p-1">
+                    <i class="fas fa-grip-vertical"></i>
+                  </div>
+                  <div class="w-6 h-6 flex items-center justify-center bg-gray-100 text-gray-500 text-[10px] font-black rounded-lg mr-3">
+                    {{ songNumberOf(idx) || '-' }}
+                  </div>
+                  <div class="flex-grow">
+                    <div class="text-sm font-bold text-gray-800 leading-tight">{{ getSongName(songId) }}</div>
+                    <div class="text-[10px] text-gray-400 flex items-center mt-0.5">
+                      <span class="mr-3"><i class="far fa-clock mr-1"></i>{{ formatTimeStr(getSongTime(songId)) }}</span>
+                    </div>
+                  </div>
+                  <button @click="removeFromSetlist(idx)" class="text-red-300 hover:text-red-500 p-2 transition opacity-0 group-hover:opacity-100">
+                    <i class="fas fa-trash-alt"></i>
+                  </button>
+                </div>
+              </div>
+              
+              <div v-if="activeSetlist.length === 0" class="py-12 text-center">
+                <div class="w-12 h-12 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-3">
+                  <i class="fas fa-list-ol text-gray-300 text-xl"></i>
+                </div>
+                <p class="text-sm text-gray-400 font-bold">まだ曲がありません</p>
+              </div>
+              
+              <div class="mt-4 flex space-x-2">
+                <button @click="addMCToSetlist" class="flex-1 bg-white border-2 border-dashed border-gray-300 text-gray-500 font-black py-3 rounded-xl text-xs active:bg-gray-100">
+                  ＋ MCを追加
+                </button>
+                <button @click="showSongSelector = true" class="flex-1 bg-blue-500 text-white font-black py-3 rounded-xl text-xs shadow-lg shadow-blue-200 active:scale-95 transition">
+                  ＋ 曲を選択
+                </button>
+              </div>
+            </div>
+
+            <!-- Modal Footer -->
+            <div class="p-4 bg-white border-t flex items-center justify-between">
+              <div class="text-xs font-black text-gray-400">
+                TOTAL: <span class="text-gray-800 ml-1">{{ currentSetlistTotalTime }}</span> / {{ activeLive['制限時間(分)'] }}m
+              </div>
+              <button @click="saveSetlist(true)" :disabled="saving" class="bg-gray-900 text-white font-black px-6 py-3 rounded-xl shadow-xl active:scale-95 transition">
+                {{ saving ? '保存中...' : 'セットリストを保存' }}
+              </button>
+            </div>
+          </div>
         </div>
+      </transition>
       </div>
 
       <!-- Bottom Navigation -->
@@ -1324,11 +1383,21 @@
             .filter(s => s.ライブID === live.ID)
             .sort((a, b) => Number(a.順番) - Number(b.順番))
             .map(s => s.曲ID);
-          nextTick(initSortable);
+          nextTick(() => initSortable('setlist-container'));
         };
         const goToSetlist = (live) => {
           goToLiveDetail(live);
           liveDetailTab.value = 'setlist';
+        };
+        const showSetlistModal = ref(false);
+        const openSetlistModal = (live) => {
+          activeLive.value = { ...live };
+          activeSetlist.value = db.value.setlists
+            .filter(s => s.ライブID === live.ID)
+            .sort((a, b) => Number(a.順番) - Number(b.順番))
+            .map(s => s.曲ID);
+          showSetlistModal.value = true;
+          nextTick(() => initSortable('modal-setlist-container'));
         };
         const openLiveModal = () => {
           goToLiveDetail({ ID: '', 日にち: new Date().toISOString().slice(0, 10), ライブ場所: '', ライブタイトル: '新規ライブ', '制限時間(分)': 30, ステータス: '参加', 動画URL: '', 写真URL: '', 備考: '', 参加メンバー: [] });
@@ -1389,21 +1458,22 @@
         const addMCToSetlist = () => { activeSetlist.value.push('__MC__'); };
         const addToSetlist = (id) => { activeSetlist.value.push(id); showSongSelector.value = false; };
         const removeFromSetlist = (idx) => { activeSetlist.value.splice(idx, 1); };
-        const saveSetlist = async () => {
+        const saveSetlist = async (isModal = false) => {
           if (!activeLive.value.ID) { alert('先にライブ[概要]を保存してください'); return; }
           saving.value = true;
           try {
             await callApi('saveSetlist', { liveId: activeLive.value.ID, setlist: activeSetlist.value });
-            alert('セットリストを保存しました'); loadData();
+            alert('セットリストを保存しました');
+            loadData();
+            if (isModal) showSetlistModal.value = false;
           } catch (err) { alert(err.message); }
           finally { saving.value = false; }
         };
 
         let sortableInstance = null;
-        const initSortable = () => {
-          // 既存インスタンスを破棄してから再作成（v-if によるDOM再生成に対応）
+        const initSortable = (elId = 'setlist-container') => {
           if (sortableInstance) { sortableInstance.destroy(); sortableInstance = null; }
-          const el = document.getElementById('setlist-container');
+          const el = document.getElementById(elId);
           if (!el) return;
           sortableInstance = new Sortable(el, {
             animation: 150,
@@ -1420,7 +1490,7 @@
         };
         // セットリストタブに切り替わるたびにSortableを再初期化
         Vue.watch(liveDetailTab, (val) => {
-          if (val === 'setlist') nextTick(initSortable);
+          if (val === 'setlist') nextTick(() => initSortable('setlist-container'));
           else if (sortableInstance) { sortableInstance.destroy(); sortableInstance = null; }
         });
 
@@ -1616,6 +1686,7 @@
           studioYear, studioMonth, changeStudioMonth, getStudiosInExactMonth, uniqueStudioVenues,
           showStudioModal, editStudio, openStudioModal, saveStudio, toggleStudioMember,
           activeLive, liveDetailTab, goToLiveDetail, goToSetlist, openLiveModal, saveActiveLive, toggleLiveMember,
+          showSetlistModal, openSetlistModal, 
           activeSetlist, showSongSelector, getSongName, getSongTime, formatTimeStr, songNumberOf,
           currentSetlistTotalTime, currentSetlistTotalTimeNum, addMCToSetlist, addToSetlist, removeFromSetlist, saveSetlist,
           newGuest, currentLiveGuests, addGuest,
